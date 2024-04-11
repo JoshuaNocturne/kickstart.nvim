@@ -84,6 +84,10 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
+vim.opt.fencs = 'utf8,gb2312,gb18030,gbk,ucs-bom,cp936,latin1'
+vim.opt.termencoding = 'utf-8'
+vim.opt.enc = 'utf8'
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -91,7 +95,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -247,15 +251,51 @@ require('lazy').setup({
   -- See `:help gitsigns` to understand what the configuration keys do
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
-    opts = {
-      signs = {
-        add = { text = '+' },
-        change = { text = '~' },
-        delete = { text = '_' },
-        topdelete = { text = '‾' },
-        changedelete = { text = '~' },
-      },
-    },
+    config = function()
+      require('gitsigns').setup {
+        signs = {
+          add = { text = '+' },
+          change = { text = '~' },
+          delete = { text = '_' },
+          topdelete = { text = '‾' },
+          changedelete = { text = '~' },
+        },
+
+        on_attach = function(bufnr)
+          local gitsigns = require 'gitsigns'
+
+          local function map(mode, l, r, desc)
+            local opts = {}
+            opts.desc = desc
+            opts.buffer = bufnr
+            vim.keymap.set(mode, l, r, opts)
+          end
+
+          -- Actions
+          map('n', '<leader>Gs', gitsigns.stage_hunk, 'git [S]tage hunk')
+          map('n', '<leader>Gr', gitsigns.reset_hunk, 'git [r]eset hunk')
+          map('v', '<leader>Gs', function()
+            gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' }
+          end, 'git [S]tage')
+          map('v', '<leader>Gr', function()
+            gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
+          end, 'git [R]reset hunk')
+          map('n', '<leader>GS', gitsigns.stage_buffer, 'git [S]tage buffer')
+          map('n', '<leader>Gu', gitsigns.undo_stage_hunk, 'git [U]ndo stage hunk')
+          map('n', '<leader>GR', gitsigns.reset_buffer, 'git [R]eset buffer')
+          map('n', '<leader>Gp', gitsigns.preview_hunk, 'git [P]review hunk')
+          map('n', '<leader>Gb', function()
+            gitsigns.blame_line { full = true }
+          end, 'git [b]lame line')
+          map('n', '<leader>Gb', gitsigns.toggle_current_line_blame, 'git toggle_current_line_[b]lame')
+          map('n', '<leader>Gd', gitsigns.diffthis, 'git [d]iffthis')
+          map('n', '<leader>GD', function()
+            gitsigns.diffthis '~'
+          end, 'git [D]diffthis')
+          map('n', '<leader>td', gitsigns.toggle_deleted, 'git toggle_[d]eleted')
+        end,
+      }
+    end,
   },
 
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
@@ -286,6 +326,9 @@ require('lazy').setup({
         ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
         ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
         ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
+        ['<leader>t'] = { name = '[T]ree', _ = 'which_key_ignore' },
+        ['<leader>m'] = { name = '[M]ark', _ = 'which_key_ignore' },
+        ['<leader>G'] = { name = '[G]itsigns', _ = 'which_key_ignore' },
       }
     end,
   },
@@ -317,6 +360,14 @@ require('lazy').setup({
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
+      {
+        'nvim-telescope/telescope-file-browser.nvim',
+        branch = 'feat/tree',
+        init = function()
+          vim.g.loaded_netrw = 1
+          vim.g.loaded_netrwPlugin = 1
+        end,
+      },
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
@@ -363,6 +414,7 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
+      pcall(require('telescope').load_extension, 'file_browser')
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
@@ -376,6 +428,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('n', '<leader>st', ':Telescope file_browser<CR>', { desc = '[S]earch file [T]ree' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
@@ -538,7 +591,7 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
+        clangd = {},
         -- gopls = {},
         -- pyright = {},
         -- rust_analyzer = {},
@@ -740,13 +793,24 @@ require('lazy').setup({
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'duskfox'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
     end,
   },
-
+  {
+    'glepnir/zephyr-nvim',
+  },
+  {
+    'shaunsingh/nord.nvim',
+  },
+  {
+    'EdenEast/nightfox.nvim',
+    lazy = false,
+    priority = 1000,
+  },
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
@@ -837,6 +901,107 @@ require('lazy').setup({
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
   --    For additional information, see `:help lazy.nvim-lazy.nvim-structuring-your-plugins`
   -- { import = 'custom.plugins' },
+  {
+    'nvim-tree/nvim-tree.lua',
+    version = '*',
+    lazy = false,
+    dependencies = {
+      'nvim-tree/nvim-web-devicons',
+    },
+
+    config = function()
+      -- local function my_on_attach(bufnr)
+      local api = require 'nvim-tree.api'
+      --   local function opts(desc)
+      --     return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+      --   end
+      --
+      --   api.config.mappings.default_on_attach(bufnr)
+      --
+      --   vim.keymap.set('n', '<leader>n', api.tree.change_root_to_parent, opts 'UP')
+      -- end
+      require('nvim-tree').setup {
+        vim.keymap.set('n', '<leader>tt', api.tree.toggle, { desc = '[T]ree nvim tree [T]oggle' }),
+        -- on_attach = my_on_attach,
+      }
+    end,
+  },
+  {
+    'chentoast/marks.nvim',
+    lazy = false,
+    config = function()
+      require('marks').setup {
+        -- whether to map keybinds or not. default true
+        default_mappings = true,
+        -- which builtin marks to show. default {}
+        -- builtin_marks = { '.', '<', '>', '^' },
+        -- whether movements cycle back to the beginning/end of buffer. default true
+        cyclic = true,
+        -- whether the shada file is updated after modifying uppercase marks. default false
+        force_write_shada = false,
+        -- how often (in ms) to redraw signs/recompute mark positions.
+        -- higher values will have better performance but may cause visual lag,
+        -- while lower values may cause performance penalties. default 150.
+        refresh_interval = 250,
+        -- sign priorities for each type of mark - builtin marks, uppercase marks, lowercase
+        -- marks, and bookmarks.
+        -- can be either a table with all/none of the keys, or a single number, in which case
+        -- the priority applies to all marks.
+        -- default 10.
+        sign_priority = { lower = 10, upper = 15, builtin = 8, bookmark = 20 },
+        -- disables mark tracking for specific filetypes. default {}
+        excluded_filetypes = {},
+        -- disables mark tracking for specific buftypes. default {}
+        excluded_buftypes = {},
+        -- marks.nvim allows you to configure up to 10 bookmark groups, each with its own
+        -- sign/virttext. Bookmarks can be used to grouplua require'marks'.next() together positions and quickly move
+        -- across multiple buffers. default sign is '!@#$%^&*()' (from 0 to 9), and
+        -- default virt_text is "".
+        -- bookmark_0 = {
+        --   sign = '⚑',
+        --   virt_text = 'hello world',
+        --   -- explicitly prompt for a virtual line annotation when setting a bookmark from this group.
+        --   -- defaults to false.
+        --   annotate = false,
+        -- },
+        vim.keymap.set('n', '<leader>mp', "<Cmd>lua require'marks'.prev()<CR>", { desc = 'Go to prev mark' }),
+        vim.keymap.set('n', '<leader>mn', "<Cmd>lua require'marks'.next()<CR>", { desc = 'Go to next mark' }),
+        vim.keymap.set('n', '<leader>mm', "<Cmd>lua require'marks'.set()<CR>", { desc = 'Set letter mark' }),
+        vim.keymap.set('n', '<leader>md', "<Cmd>lua require'marks'.delete_line()<CR>", { desc = 'delete line mark' }),
+      }
+    end,
+  },
+
+  {
+    'hedyhli/outline.nvim',
+    lazy = true,
+    cmd = { 'Outline', 'OutlineOpen' },
+    keys = { -- Example mapping to toggle outline
+      { '<leader>o', '<cmd>Outline<CR>', desc = 'Toggle outline' },
+    },
+    opts = {
+      -- Your setup opts here
+    },
+  },
+  {
+    'akinsho/toggleterm.nvim',
+    version = '*',
+    config = function()
+      require('toggleterm').setup {
+        open_mapping = [[<c-\>]],
+        start_in_insert = true,
+        direction = 'float',
+      }
+    end,
+  },
+
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('lualine').setup {}
+    end,
+  },
 }, {
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
