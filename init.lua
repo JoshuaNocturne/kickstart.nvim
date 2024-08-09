@@ -88,6 +88,10 @@ vim.opt.fencs = 'utf8,gb2312,gb18030,gbk,ucs-bom,cp936,latin1'
 vim.opt.termencoding = 'utf-8'
 vim.opt.enc = 'utf8'
 
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.expandtab = true
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -329,6 +333,7 @@ require('lazy').setup({
         ['<leader>t'] = { name = '[T]ree', _ = 'which_key_ignore' },
         ['<leader>m'] = { name = '[M]ark', _ = 'which_key_ignore' },
         ['<leader>G'] = { name = '[G]itsigns', _ = 'which_key_ignore' },
+        ['<leader>h'] = { name = '[h]op', _ = 'which_key_ignore' },
       }
     end,
   },
@@ -613,6 +618,15 @@ require('lazy').setup({
               completion = {
                 callSnippet = 'Replace',
               },
+              -- format = {
+              --   enable = true,
+              --   -- Put format options here
+              --   -- NOTE: the value should be STRING!!
+              --   defaultConfig = {
+              --     indent_style = 'space',
+              --     indent_size = '2',
+              --   },
+              -- },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
               -- diagnostics = { disable = { 'missing-fields' } },
             },
@@ -660,6 +674,7 @@ require('lazy').setup({
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
         local disable_filetypes = { c = true, cpp = true }
+        -- local disable_filetypes = {}
         return {
           timeout_ms = 500,
           lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
@@ -667,6 +682,7 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        -- cpp = { 'clang-format' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -922,10 +938,29 @@ require('lazy').setup({
       -- end
       require('nvim-tree').setup {
         vim.keymap.set('n', '<leader>tt', api.tree.toggle, { desc = '[T]ree nvim tree [T]oggle' }),
+        vim.keymap.set('n', '<C-b>', api.node.open.vertical, { desc = 'nvim-tree: Open: Vertical Split' }),
         -- on_attach = my_on_attach,
       }
     end,
   },
+  -- {
+  --   'nvim-neo-tree/neo-tree.nvim',
+  --   branch = 'v3.x',
+  --   dependencies = {
+  --     'nvim-lua/plenary.nvim',
+  --     'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
+  --     'MunifTanjim/nui.nvim',
+  --     -- "3rd/image.nvim", -- Optional image support in preview window: See `# Preview Mode` for more information
+  --   },
+  --   config = function()
+  --     require('neo-tree').setup {
+  --       source_selector = {
+  --         winbar = false,
+  --         statusline = false,
+  --       }
+  --     }
+  --     end
+  -- },
   {
     'chentoast/marks.nvim',
     lazy = false,
@@ -987,10 +1022,16 @@ require('lazy').setup({
     'akinsho/toggleterm.nvim',
     version = '*',
     config = function()
+      local buf = vim.api.nvim_get_current_buf()
+      local filename = vim.api.nvim_buf_get_name(buf)
+      filename = string.match(filename, '.*/(.+)$') or ''
+      filename = string.gsub(filename, '%.', '_')
+
       require('toggleterm').setup {
-        open_mapping = [[<c-\>]],
+        open_mapping = [[<F7>]],
         start_in_insert = true,
         direction = 'float',
+        env = { NVIM_TERMINAL_NAME = 'NvimTerm_' .. filename },
       }
     end,
   },
@@ -1000,6 +1041,20 @@ require('lazy').setup({
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
       require('lualine').setup {}
+    end,
+  },
+
+  {
+    'phaazon/hop.nvim',
+    branch = 'v2', -- optional but strongly recommended
+    config = function()
+      -- you can configure Hop the way you like here; see :h hop-config
+      require('hop').setup {} --{ keys = 'etovxqpdygfblzhckisuran' }
+      vim.keymap.set('n', '<leader>hw', '<cmd>HopWord<cr>', { desc = '[h]op [w]ord' })
+      vim.keymap.set('n', '<leader>hc', '<cmd>HopChar1<cr>', { desc = '[h]op [c]har1' })
+      vim.keymap.set('n', '<leader>hC', '<cmd>HopChar2<cr>', { desc = '[h]op [C]har2' })
+      vim.keymap.set('n', '<leader>hp', '<cmd>HopPattern<cr>', { desc = '[h]op [p]attern' })
+      vim.keymap.set('n', '<leader>hl', '<cmd>HopLine<cr>', { desc = '[h]op [l]ine' })
     end,
   },
 }, {
